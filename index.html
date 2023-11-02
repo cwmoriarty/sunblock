@@ -3,11 +3,11 @@
 <body>
   <b>Zipcode:</b><div id="zip"></div>
   <script type="text/javascript">
-    fetch('http://ip-api.com/json/')
+    fetch('https://ipapi.co/json') //ssl-tax free version of http://ip-api.com/json/
       .then(response => response.json())
       .then(data => {
         //console.log(data);
-        document.getElementById("zip").innerHTML = data.zip;
+        document.getElementById("zip").innerHTML = data.postal;
       })
       .catch(error => {
         console.error("Error fetching data:", error);
