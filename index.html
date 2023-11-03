@@ -15,7 +15,7 @@
     <li>Then <span id="maxTempFollowing4"></span> / <span id="minTempFollowing4"></span></li>
     <li>Then <span id="maxTempFollowing5"></span> / <span id="minTempFollowing5"></span></li>
     <li>Then <span id="maxTempFollowing6"></span> / <span id="minTempFollowing6"></span></li>
-    <li>Then <span id="maxTempFollowing7"></span> / <span id="minTempFollowing7"></span></li>
+    <!-- <li>Then <span id="maxTempFollowing7"></span> / <span id="minTempFollowing7"></span></li>-->
   </ul>
 
 
@@ -86,7 +86,7 @@
 
 
 
-            //Get Forecast Grid (eg: https://api.weather.gov/gridpoints/BOX/76,100)
+            //Get Forecast Grid (eg: https://api.weather.gov/gridpoints/BOX/76,100, https://api.weather.gov/gridpoints/SEW/125,69 )
             fetch(forecastGridData, {
               method: 'GET',
               headers: { 'User-Agent': '(cwmoriarty.github.io/sunblock, cwm@cwmoriarty.com)', }
@@ -104,7 +104,7 @@
                 maxTempFollowing4 = data.properties.maxTemperature.values[5].value * 9 / 5 + 32;
                 maxTempFollowing5 = data.properties.maxTemperature.values[6].value * 9 / 5 + 32;
                 maxTempFollowing6 = data.properties.maxTemperature.values[7].value * 9 / 5 + 32;
-                maxTempFollowing7 = data.properties.maxTemperature.values[8].value * 9 / 5 + 32;
+                //maxTempFollowing7 = data.properties.maxTemperature.values[8].value * 9 / 5 + 32;
 
                 minTemp = data.properties.minTemperature.values[0].value * 9 / 5 + 32;
                 minTempTomorrow = data.properties.minTemperature.values[1].value * 9 / 5 + 32;
@@ -114,7 +114,7 @@
                 minTempFollowing4 = data.properties.minTemperature.values[5].value * 9 / 5 + 32;
                 minTempFollowing5 = data.properties.minTemperature.values[6].value * 9 / 5 + 32;
                 minTempFollowing6 = data.properties.minTemperature.values[7].value * 9 / 5 + 32;
-                minTempFollowing7 = data.properties.minTemperature.values[8].value * 9 / 5 + 32;
+                //minTempFollowing7 = data.properties.minTemperature.values[8].value * 9 / 5 + 32;
 
                 document.getElementById("forecastGridData").href = forecastGridData;
 
@@ -126,7 +126,7 @@
                 document.getElementById("maxTempFollowing4").innerHTML = maxTempFollowing4 + "F";
                 document.getElementById("maxTempFollowing5").innerHTML = maxTempFollowing5 + "F";
                 document.getElementById("maxTempFollowing6").innerHTML = maxTempFollowing6 + "F";
-                document.getElementById("maxTempFollowing7").innerHTML = maxTempFollowing7 + "F";
+                //document.getElementById("maxTempFollowing7").innerHTML = maxTempFollowing7 + "F";
 
                 document.getElementById("minTemp").innerHTML = minTemp + "F";
                 document.getElementById("minTempTomorrow").innerHTML = minTempTomorrow + "F";
@@ -136,7 +136,7 @@
                 document.getElementById("minTempFollowing4").innerHTML = minTempFollowing4 + "F";
                 document.getElementById("minTempFollowing5").innerHTML = minTempFollowing5 + "F";
                 document.getElementById("minTempFollowing6").innerHTML = minTempFollowing6 + "F";
-                document.getElementById("minTempFollowing7").innerHTML = minTempFollowing7 + "F";
+                //document.getElementById("minTempFollowing7").innerHTML = minTempFollowing7 + "F";
               })
 
 
