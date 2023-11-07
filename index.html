@@ -2,163 +2,18 @@
 <html>
 
 <body>
-  <h1><span id="city"></span> Weather</h1>
-  Currently <span id="temp"></span> and <b><span id="shortForecast"></span></b><br>
-  <br>
-  <h2>Current Forecast</h2>
-  <ul>
-    <li>Today <span id="maxTemp"></span>/ <span id="minTemp"></span></li>
-    <li>Tomorrow <span id="maxTempTomorrow"></span> / <span id="minTempTomorrow"></span></li>
-    <li>Then <span id="maxTempFollowing"></span> / <span id="minTempFollowing"></span></li>
-    <li>Then <span id="maxTempFollowing2"></span> / <span id="minTempFollowing2"></span></li>
-    <li>Then <span id="maxTempFollowing3"></span> / <span id="minTempFollowing3"></span></li>
-    <li>Then <span id="maxTempFollowing4"></span> / <span id="minTempFollowing4"></span></li>
-    <li>Then <span id="maxTempFollowing5"></span> / <span id="minTempFollowing5"></span></li>
-    <li>Then <span id="maxTempFollowing6"></span> / <span id="minTempFollowing6"></span></li>
-    <!-- <li>Then <span id="maxTempFollowing7"></span> / <span id="minTempFollowing7"></span></li>-->
-  </ul>
-
-
-  <br>
-  <img id="weather_icon" src="">
-  <br><Br>
-  <b>forecastGridData:</b> <a id="forecastGridData" href="">API</a><br>
-  <b>Zipcode:</b> <span id="zip"></span><br>
-  <b>Lat, Lon:</b> <span id="latlon"></span>
-
-
+  <h1>Sunblock</h1>
+  <br><span id="city"></span> Weather</h1>
 
   <script type="text/javascript">
-
-    //Get client Lat/Lon 
-    fetch('https://ipapi.co/json') //ssl-tax free version of http://ip-api.com/json/
-      .then(response => response.json())
-      .then(data => {
-        document.getElementById("zip").innerHTML = data.postal;
-        document.getElementById("city").innerHTML = data.city;
-        document.getElementById("latlon").innerHTML = data.latitude + "," + data.longitude;
-        weatherAPIURL = 'https://api.weather.gov/points/' + data.latitude + "," + data.longitude;
-
-
-        //Get Local Weather Station forecastURL
-        //todo, make this syncronous after the above fetch completes, not whithin
-        fetch(weatherAPIURL, {
-          method: 'GET',
-          headers: { 'User-Agent': '(cwmoriarty.github.io/sunblock, cwm@cwmoriarty.com)', }
-        })
-          .then(response => response.json())
-          .then(data => {
-            localforecastURL = `${data.properties.forecastHourly}` //?units=si for celcius, ?units=us for "us"
-            forecastGridData = `${data.properties.forecastGridData}`
-            //data.properties.forecast "https://api.weather.gov/gridpoints/BOX/76,100/forecast"
-            //data.properties.forecastHourly "https://api.weather.gov/gridpoints/BOX/76,100/forecast/hourly"
-            //data.properties.forecastGridData "https://api.weather.gov/gridpoints/BOX/76,100 " //box is fixed to celcius
-
-
-
-
-            //Get Forecast (Hourly)
-            fetch(localforecastURL, {
-              method: 'GET',
-              headers: { 'User-Agent': '(cwmoriarty.github.io/sunblock, cwm@cwmoriarty.com)', }
-            })
-              .then(response => response.json())
-              .then(data => {
-                console.log(data);
-                shortForecast = data.properties.periods[0].shortForecast;
-                temp = data.properties.periods[0].temperature + '' + data.properties.periods[0].temperatureUnit;
-
-                icon = data.properties.periods[0].icon; //todo sanitize URL (has a trailing ',0?small')
-
-                document.getElementById("shortForecast").innerHTML = shortForecast;
-                document.getElementById("temp").innerHTML = temp;
-
-                //document.getElementById("weather_icon").src = icon;
-
-              })
-              .catch(error => {
-                console.error("Error fetching Forecast data:", error);
-              });
-
-
-
-
-
-
-
-            //Get Forecast Grid (eg: https://api.weather.gov/gridpoints/BOX/76,100, https://api.weather.gov/gridpoints/SEW/125,69 )
-            fetch(forecastGridData, {
-              method: 'GET',
-              headers: { 'User-Agent': '(cwmoriarty.github.io/sunblock, cwm@cwmoriarty.com)', }
-            })
-              .then(response => response.json())
-              .then(data => {
-                //console.log(data);
-                //maxTempTime = data.properties.maxTemperature.values[0].validTime.split('/')[0]; //Not accurate, just the "valid time"
-
-                maxTemp = data.properties.maxTemperature.values[0].value * 9 / 5 + 32;
-                maxTempTomorrow = data.properties.maxTemperature.values[1].value * 9 / 5 + 32;
-                maxTempFollowing = data.properties.maxTemperature.values[2].value * 9 / 5 + 32;
-                maxTempFollowing2 = data.properties.maxTemperature.values[3].value * 9 / 5 + 32;
-                maxTempFollowing3 = data.properties.maxTemperature.values[4].value * 9 / 5 + 32;
-                maxTempFollowing4 = data.properties.maxTemperature.values[5].value * 9 / 5 + 32;
-                maxTempFollowing5 = data.properties.maxTemperature.values[6].value * 9 / 5 + 32;
-                maxTempFollowing6 = data.properties.maxTemperature.values[7].value * 9 / 5 + 32;
-                //maxTempFollowing7 = data.properties.maxTemperature.values[8].value * 9 / 5 + 32;
-
-                minTemp = data.properties.minTemperature.values[0].value * 9 / 5 + 32;
-                minTempTomorrow = data.properties.minTemperature.values[1].value * 9 / 5 + 32;
-                minTempFollowing = data.properties.minTemperature.values[2].value * 9 / 5 + 32;
-                minTempFollowing2 = data.properties.minTemperature.values[3].value * 9 / 5 + 32;
-                minTempFollowing3 = data.properties.minTemperature.values[4].value * 9 / 5 + 32;
-                minTempFollowing4 = data.properties.minTemperature.values[5].value * 9 / 5 + 32;
-                minTempFollowing5 = data.properties.minTemperature.values[6].value * 9 / 5 + 32;
-                minTempFollowing6 = data.properties.minTemperature.values[7].value * 9 / 5 + 32;
-                //minTempFollowing7 = data.properties.minTemperature.values[8].value * 9 / 5 + 32;
-
-                document.getElementById("forecastGridData").href = forecastGridData;
-
-                document.getElementById("maxTemp").innerHTML = maxTemp + "F";
-                document.getElementById("maxTempTomorrow").innerHTML = maxTempTomorrow + "F";
-                document.getElementById("maxTempFollowing").innerHTML = maxTempFollowing + "F";
-                document.getElementById("maxTempFollowing2").innerHTML = maxTempFollowing2 + "F";
-                document.getElementById("maxTempFollowing3").innerHTML = maxTempFollowing3 + "F";
-                document.getElementById("maxTempFollowing4").innerHTML = maxTempFollowing4 + "F";
-                document.getElementById("maxTempFollowing5").innerHTML = maxTempFollowing5 + "F";
-                document.getElementById("maxTempFollowing6").innerHTML = maxTempFollowing6 + "F";
-                //document.getElementById("maxTempFollowing7").innerHTML = maxTempFollowing7 + "F";
-
-                document.getElementById("minTemp").innerHTML = minTemp + "F";
-                document.getElementById("minTempTomorrow").innerHTML = minTempTomorrow + "F";
-                document.getElementById("minTempFollowing").innerHTML = minTempFollowing + "F";
-                document.getElementById("minTempFollowing2").innerHTML = minTempFollowing2 + "F";
-                document.getElementById("minTempFollowing3").innerHTML = minTempFollowing3 + "F";
-                document.getElementById("minTempFollowing4").innerHTML = minTempFollowing4 + "F";
-                document.getElementById("minTempFollowing5").innerHTML = minTempFollowing5 + "F";
-                document.getElementById("minTempFollowing6").innerHTML = minTempFollowing6 + "F";
-                //document.getElementById("minTempFollowing7").innerHTML = minTempFollowing7 + "F";
-              })
-
-
-
-              .catch(error => {
-                console.error("Error fetching Forecast data:", error);
-              });
-
-
-
-
-
-
-          })
-          .catch(error => {
-            console.error("Error fetching Weather Station data:", error);
-          });
-      })
+    fetch('https://ipapi.co/json').then(response => response.json()).then(data => {
+      city = data.city + ", " + data.region_code;
+      document.getElementById("city").innerHTML = city;
+      //weatherAPIURL = `https://api.open-meteo.com/v1/forecast?latitude=${data.latitude}&longitude=${data.longitude}&current=temperature_2m,precipitation,rain,showers,snowfall,weathercode&hourly=temperature_2m,rain&daily=uv_index_clear_sky_max&temperature_unit=fahrenheit&windspeed_unit=mph&precipitation_unit=inch&timezone=auto`;
+    })
       .catch(error => {
         console.error("Error fetching IP data:", error);
       });
   </script>
 </body>
-
 </html>
