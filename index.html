@@ -2,8 +2,13 @@
 <html>
 
 <body>
-  <h1>Sunblock</h1>
-  <br><span id="city"></span> Weather</h1>
+  
+  <div class="centered">
+  <h1>Sunblock Alpha</h1>
+  <br><span id="city"></span> Weather<br>
+  <code></code>
+  </div>
+
 
   <script type="text/javascript">
     fetch('https://ipapi.co/json').then(response => response.json()).then(data => {
@@ -15,5 +20,18 @@
         console.error("Error fetching IP data:", error);
       });
   </script>
+
+
+  <style type="text/css">
+    body { font-family: Helvetica, Geneva, sans-serif; }
+    a { color: black; }
+    .centered { 
+      position: fixed;
+      top: 50%;
+      left: 50%;
+      margin-top: -125px;
+      margin-left: -87px;
+    }
+    </style>
 </body>
 </html>
