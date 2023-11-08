@@ -5,8 +5,8 @@
   <body>
   
   <div class="centered">
-  <h1>Sunblock Alpha</h1>
-  <br><a href="" id="webcalURL"><span id="city"></span> Weather Calendar</a><br>
+  <h1>Sunblock Alpha ☀️</h1>
+  <br><a href="" id="webcalURL">📅 <span id="city"></span> Weather Calendar</a><br>
   <br>
 
 <input type="text" id="webCal" value="" ></input>
@@ -29,8 +29,8 @@
     fetch('https://ipapi.co/json').then(response => response.json()).then(data => {
       city = data.city + ", " + data.region_code;
       document.getElementById("city").innerHTML = city;
-      document.getElementById("webCal").value='https://sunblock.app/cal/?lat='+data.latitude.toFixed(2)+'&lon='+data.longitude.toFixed(2)+'&loc='+city;
-      document.getElementById("webcalURL").href='webcal://sunblock.app/cal/?lat='+data.latitude.toFixed(2)+'&lon='+data.longitude.toFixed(2)+'&loc='+city;
+      document.getElementById("webCal").value='https://sunblock.app/cal/?lat='+data.latitude.toFixed(2)+'&lon='+data.longitude.toFixed(2)+'&loc='+encodeURIComponent(city);
+      document.getElementById("webcalURL").href='webcal://sunblock.app/cal/?lat='+data.latitude.toFixed(2)+'&lon='+data.longitude.toFixed(2)+'&loc='+encodeURIComponent(city);
 
     })
       .catch(error => {
