@@ -28,9 +28,13 @@
   <script type="text/javascript">
     fetch('https://ipapi.co/json').then(response => response.json()).then(data => {
       city = data.city + ", " + data.region_code;
+
+      url='sunblock.app/cal/?lat='+data.latitude.toFixed(2)+'&lon='+data.longitude.toFixed(2)+'&loc='+encodeURIComponent(city);
+      if (data.country !== "US" ) { url+="&units=C" }
+
       document.getElementById("city").innerHTML = city;
-      document.getElementById("webCal").value='https://sunblock.app/cal/?lat='+data.latitude.toFixed(2)+'&lon='+data.longitude.toFixed(2)+'&loc='+encodeURIComponent(city);
-      document.getElementById("webcalURL").href='webcal://sunblock.app/cal/?lat='+data.latitude.toFixed(2)+'&lon='+data.longitude.toFixed(2)+'&loc='+encodeURIComponent(city);
+      document.getElementById("webCal").value='https://'+url;
+      document.getElementById("webcalURL").href='webcal://'+url;
 
     })
       .catch(error => {
