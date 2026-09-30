@@ -1,29 +1,39 @@
 <!DOCTYPE html>
 <html>
-<!-- Note: Non-production copy. Firebase hosts this file. --> 
 
-  <body>
-  
+<head>
+  <title>Sunblock 0.4b ☀️</title>
+  <script async src="https://www.googletagmanager.com/gtag/js?id=G-914SDJ7S2Z"></script>
+  <script>window.dataLayer = window.dataLayer || []; function gtag() { dataLayer.push(arguments); } gtag('js', new Date()); gtag('config', 'G-914SDJ7S2Z');</script>
+</head>
+
+<body>
+
   <div class="centered">
-  <h1>Sunblock 0.4b ☀️</h1>
-  <br><a href="" id="webcalURL">📅 <span id="city" contenteditable="plaintext-only" spellcheck="false" title="Click to edit city name"></span> Weather Calendar</a><br>
-  <br>
+    <h1>Sunblock 0.4b ☀️</h1>
+    <br>📅 <a href="" id="webcalURL"><span id="city" contenteditable="plaintext-only" spellcheck="false" title="Click to edit city name"></span></a> Weather Calendar.<br>
+    <br>
 
-<input type="text" id="webCal" value="" ></input>
-<input type="button" id="copy" value="Copy" onclick="copyCal()"></input>
-</div>
+    <input type="text" id="webCal" value=""></input>
+    <input type="button" id="copy" value="Copy" onclick="copyCal()"></input>
+    <br>
+    <span id="gcal"></span>
+  </div>
 
+  <div class="libleft">
+    👨‍💻 <a href="http://cwmoriarty.com">cwmoriarty.com</a><br><br>
+  </div>
 
-<script type="text/javascript">
-  function copyCal() {
-    var webCal = document.getElementById("webCal");
-    webCal.select();
-    webCal.setSelectionRange(0, 99999); 
-    navigator.clipboard.writeText(webCal.value);
-    document.getElementById("copy").value="Copied.";
-  }
-</script>
-
+  <script type="text/javascript">
+    function copyCal() {
+      var webCal = document.getElementById("webCal");
+      webCal.select();
+      webCal.setSelectionRange(0, 99999);
+      navigator.clipboard.writeText(webCal.value);
+      document.getElementById("copy").value = "Copied.";
+      document.getElementById("gcal").innerHTML = "<a href=https://calendar.google.com/calendar/u/0/r/settings/addbyurl>Paste in Google Calendar</a>";
+    }
+  </script>
 
   <script type="text/javascript">
     const usStates = {
@@ -132,17 +142,29 @@
       });
   </script>
 
-
   <style type="text/css">
-    body { font-family: Helvetica, Geneva, sans-serif; }
-    a { color: black; }
-    .centered { 
-      position: fixed;
+    body {
+      font-family: Helvetica, Geneva, sans-serif;
+    }
+
+    a {
+      color: black;
+    }
+
+    .centered {
+      position: absolute;
       top: 50%;
       left: 50%;
-      margin-top: -125px;
-      margin-left: -87px;
+      transform: translate(-50%, -50%);
+      width: 50%;
+      height: 50%;
+      font-size: calc(1vw + 1vh);
     }
+
+    .centered h1 {
+      font-size: calc(2vw + 2vh);
+    }
+
     #city {
       font-family: inherit;
       font-size: inherit;
@@ -153,10 +175,27 @@
       border-bottom: 1px dashed rgba(0, 0, 0, 0.4);
       padding: 0 2px;
     }
+
     #city:focus {
       background-color: rgba(0, 0, 0, 0.05);
       border-bottom-style: solid;
     }
-    </style>
-  </body>
+
+    @media (max-width: 768px) {
+      .centered {
+        width: 50%;
+        height: 50%;
+        font-size: calc(2vw + 2vh);
+      }
+    }
+
+    .libleft {
+      font-size: large;
+      position: fixed;
+      left: 10px;
+      bottom: 10px;
+    }
+  </style>
+</body>
+
 </html>
