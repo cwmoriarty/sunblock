@@ -18,6 +18,78 @@
     <input type="button" id="copy" value="Copy" onclick="copyCal()"></input>
     <br>
     <span id="gcal"></span>
+
+    <!-- 3-Day Visual Demo (Google Calendar personal events + live Sunblock overlay) -->
+    <div class="calendar-preview">
+      <div class="calendar-preview-header">
+        <div class="calendar-title">
+          <span class="gcal-icon">🗓️</span>
+          <strong>3-Day Calendar Preview</strong>
+          <span class="preview-subtitle">(Personal schedule + live Sunblock forecast overlay)</span>
+        </div>
+        <div id="calendarStatus" class="calendar-status">Polling /cal...</div>
+      </div>
+      <div class="gcal-view">
+        <div class="gcal-header-row">
+          <div class="gcal-time-col-header"></div>
+          <div class="gcal-day-header" id="dayHeader0">
+            <span class="day-name">TODAY</span>
+            <span class="day-number active-day" id="dayNum0">-</span>
+          </div>
+          <div class="gcal-day-header" id="dayHeader1">
+            <span class="day-name">TOMORROW</span>
+            <span class="day-number" id="dayNum1">-</span>
+          </div>
+          <div class="gcal-day-header" id="dayHeader2">
+            <span class="day-name" id="dayName2">DAY 3</span>
+            <span class="day-number" id="dayNum2">-</span>
+          </div>
+        </div>
+        <div class="gcal-body">
+          <div class="gcal-time-gutter">
+            <div class="time-slot-label">8 AM</div>
+            <div class="time-slot-label">10 AM</div>
+            <div class="time-slot-label">12 PM</div>
+            <div class="time-slot-label">2 PM</div>
+            <div class="time-slot-label">4 PM</div>
+            <div class="time-slot-label">6 PM</div>
+            <div class="time-slot-label">8 PM</div>
+          </div>
+          <div class="gcal-days-grid">
+            <div class="gcal-day-col" id="dayCol0">
+              <div class="grid-line" style="top:0%"></div>
+              <div class="grid-line" style="top:15.4%"></div>
+              <div class="grid-line" style="top:30.8%"></div>
+              <div class="grid-line" style="top:46.2%"></div>
+              <div class="grid-line" style="top:61.5%"></div>
+              <div class="grid-line" style="top:76.9%"></div>
+              <div class="grid-line" style="top:92.3%"></div>
+              <div class="events-layer" id="eventsDay0"></div>
+            </div>
+            <div class="gcal-day-col" id="dayCol1">
+              <div class="grid-line" style="top:0%"></div>
+              <div class="grid-line" style="top:15.4%"></div>
+              <div class="grid-line" style="top:30.8%"></div>
+              <div class="grid-line" style="top:46.2%"></div>
+              <div class="grid-line" style="top:61.5%"></div>
+              <div class="grid-line" style="top:76.9%"></div>
+              <div class="grid-line" style="top:92.3%"></div>
+              <div class="events-layer" id="eventsDay1"></div>
+            </div>
+            <div class="gcal-day-col" id="dayCol2">
+              <div class="grid-line" style="top:0%"></div>
+              <div class="grid-line" style="top:15.4%"></div>
+              <div class="grid-line" style="top:30.8%"></div>
+              <div class="grid-line" style="top:46.2%"></div>
+              <div class="grid-line" style="top:61.5%"></div>
+              <div class="grid-line" style="top:76.9%"></div>
+              <div class="grid-line" style="top:92.3%"></div>
+              <div class="events-layer" id="eventsDay2"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
   </div>
 
   <div class="libleft">
@@ -62,6 +134,167 @@
       }
       document.getElementById("webCal").value = 'https://' + url;
       document.getElementById("webcalURL").href = 'webcal://' + url;
+      debouncePollLiveCalendar();
+    }
+
+    let pollTimer = null;
+    function debouncePollLiveCalendar() {
+      clearTimeout(pollTimer);
+      pollTimer = setTimeout(pollLiveCalendarData, 400);
+    }
+
+    function parseICS(icsText) {
+      const events = [];
+      const blocks = icsText.split("BEGIN:VEVENT");
+      for (let i = 1; i < blocks.length; i++) {
+        const block = blocks[i].split("END:VEVENT")[0];
+        const dtMatch = block.match(/DTSTART[^:]*:(\d{4})(\d{2})(\d{2})T(\d{2})(\d{2})/);
+        const summaryMatch = block.match(/SUMMARY:([^\r\n]+)/);
+        if (dtMatch && summaryMatch) {
+          const year = parseInt(dtMatch[1], 10);
+          const month = parseInt(dtMatch[2], 10) - 1;
+          const day = parseInt(dtMatch[3], 10);
+          const hour = parseInt(dtMatch[4], 10);
+          const minute = parseInt(dtMatch[5], 10);
+          events.push({
+            year, month, day, hour, minute,
+            summary: summaryMatch[1].trim()
+          });
+        }
+      }
+      return events;
+    }
+
+    async function pollLiveCalendarData() {
+      const statusEl = document.getElementById("calendarStatus");
+      if (statusEl) statusEl.textContent = "Updating live forecast...";
+
+      let unitsParam = "";
+      if (currentCountry !== "US" && currentCountry !== "us") {
+        unitsParam = "&units=C";
+      }
+
+      const locParam = encodeURIComponent(citySpan ? citySpan.textContent.trim() : "");
+      const calQuery = `?lat=${currentLat.toFixed(2)}&lon=${currentLon.toFixed(2)}&loc=${locParam}${unitsParam}`;
+      const candidateUrls = [
+        `/cal/${calQuery}`,
+        `https://sunblock.app/cal/${calQuery}`,
+        `https://us-central1-sunblock-poc.cloudfunctions.net/cal${calQuery}`
+      ];
+
+      let icsText = null;
+      for (const candidate of candidateUrls) {
+        try {
+          const res = await fetch(candidate);
+          if (res.ok) {
+            const text = await res.text();
+            if (text && text.includes("BEGIN:VCALENDAR")) {
+              icsText = text;
+              break;
+            }
+          }
+        } catch (e) {
+          // Try next endpoint candidate
+        }
+      }
+
+      if (!icsText) {
+        if (statusEl) statusEl.textContent = "Demo: Personal Schedule (Live feed offline)";
+        renderCalendarDemo([]);
+        return;
+      }
+
+      if (statusEl) statusEl.textContent = "Live forecast synced";
+      const events = parseICS(icsText);
+      renderCalendarDemo(events);
+    }
+
+    function renderCalendarDemo(sunblockEvents) {
+      const now = new Date();
+      const days = [
+        new Date(now.getFullYear(), now.getMonth(), now.getDate()),
+        new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1),
+        new Date(now.getFullYear(), now.getMonth(), now.getDate() + 2)
+      ];
+
+      const weekdayNames = ["SUN", "MON", "TUE", "WED", "THU", "FRI", "SAT"];
+
+      days.forEach((d, idx) => {
+        const numEl = document.getElementById("dayNum" + idx);
+        if (numEl) numEl.textContent = d.getDate();
+        if (idx === 2) {
+          const nameEl = document.getElementById("dayName2");
+          if (nameEl) nameEl.textContent = weekdayNames[d.getDay()];
+        }
+      });
+
+      // Personal calendar events for the 3-day demo (Lunch, Dinner, Meeting)
+      const personalEvents = [
+        // Day 0: Today
+        [
+          { title: "Lunch", time: "12:00 PM", startHour: 12, startMin: 0, durationHours: 1, type: "lunch" },
+          { title: "Meeting", time: "2:30 PM", startHour: 14, startMin: 30, durationHours: 1, type: "meeting" }
+        ],
+        // Day 1: Tomorrow
+        [
+          { title: "Lunch", time: "12:30 PM", startHour: 12, startMin: 30, durationHours: 1, type: "lunch" },
+          { title: "Dinner", time: "6:30 PM", startHour: 18, startMin: 30, durationHours: 1.5, type: "dinner" }
+        ],
+        // Day 2: Day after tomorrow
+        [
+          { title: "Meeting", time: "10:00 AM", startHour: 10, startMin: 0, durationHours: 1, type: "meeting" },
+          { title: "Dinner", time: "7:00 PM", startHour: 19, startMin: 0, durationHours: 1.5, type: "dinner" }
+        ]
+      ];
+
+      const startDayHour = 8;
+      const totalHours = 13; // 8 AM to 9 PM
+
+      for (let dayIdx = 0; dayIdx < 3; dayIdx++) {
+        const targetDate = days[dayIdx];
+        const container = document.getElementById("eventsDay" + dayIdx);
+        if (!container) continue;
+        container.innerHTML = "";
+
+        // Personal events on left half
+        personalEvents[dayIdx].forEach(ev => {
+          const topPercent = Math.max(0, Math.min(90, ((ev.startHour + ev.startMin / 60 - startDayHour) / totalHours) * 100));
+          const heightPercent = Math.max(6, (ev.durationHours / totalHours) * 100);
+
+          const el = document.createElement("div");
+          el.className = `gcal-event gcal-event-${ev.type}`;
+          el.style.top = topPercent.toFixed(1) + "%";
+          el.style.height = heightPercent.toFixed(1) + "%";
+          el.style.left = "2px";
+          el.style.width = "47%";
+          el.innerHTML = `<span class="event-time">${ev.time}</span><span class="event-title">${ev.title}</span>`;
+          container.appendChild(el);
+        });
+
+        // Filter live Sunblock events for this day
+        const daySunblockEvents = (sunblockEvents || []).filter(ev => {
+          return ev.year === targetDate.getFullYear() &&
+                 ev.month === targetDate.getMonth() &&
+                 ev.day === targetDate.getDate();
+        });
+
+        // Sunblock events overlaid on right half
+        daySunblockEvents.forEach(ev => {
+          const clampedHour = Math.max(startDayHour, Math.min(20, ev.hour));
+          const topPercent = Math.max(0, Math.min(90, ((clampedHour + ev.minute / 60 - startDayHour) / totalHours) * 100));
+          const heightPercent = 7.5;
+
+          const el = document.createElement("div");
+          el.className = "gcal-event gcal-event-sunblock";
+          el.style.top = topPercent.toFixed(1) + "%";
+          el.style.height = heightPercent.toFixed(1) + "%";
+          el.style.right = "2px";
+          el.style.width = "47%";
+          el.title = `Sunblock: ${ev.summary}`;
+          el.innerHTML = `<span class="event-sunblock-text">${ev.summary}</span>`;
+          container.appendChild(el);
+        });
+      }
     }
 
     function setCityAndLinks(name, lat, lon, country) {
@@ -123,6 +356,10 @@
       updateCalendarLinks(citySpan.textContent.trim());
     });
 
+    // Initialize 3-day personal calendar demo immediately and poll live feed
+    renderCalendarDemo([]);
+    pollLiveCalendarData();
+
     // Determine initial city & coordinates via IP
     fetch('https://ipapi.co/json')
       .then(response => {
@@ -145,6 +382,10 @@
   <style type="text/css">
     body {
       font-family: Helvetica, Geneva, sans-serif;
+      margin: 0;
+      padding: 0;
+      background: #fafafa;
+      color: #202124;
     }
 
     a {
@@ -152,17 +393,16 @@
     }
 
     .centered {
-      position: absolute;
-      top: 50%;
-      left: 50%;
-      transform: translate(-50%, -50%);
-      width: 50%;
-      height: 50%;
-      font-size: calc(1vw + 1vh);
+      width: 92%;
+      max-width: 680px;
+      margin: 2.5rem auto 5rem auto;
+      text-align: center;
+      font-size: 16px;
     }
 
     .centered h1 {
-      font-size: calc(2vw + 2vh);
+      font-size: calc(1.8vw + 1.8vh + 14px);
+      margin: 0.5rem 0;
     }
 
     #city {
@@ -181,12 +421,257 @@
       border-bottom-style: solid;
     }
 
-    @media (max-width: 768px) {
-      .centered {
-        width: 50%;
-        height: 50%;
-        font-size: calc(2vw + 2vh);
-      }
+    #webCal {
+      width: 70%;
+      max-width: 380px;
+      padding: 6px 10px;
+      font-size: 14px;
+      border: 1px solid #dadce0;
+      border-radius: 4px;
+      box-sizing: border-box;
+    }
+
+    #copy {
+      padding: 6px 14px;
+      font-size: 14px;
+      border: 1px solid #dadce0;
+      border-radius: 4px;
+      background: #f1f3f4;
+      cursor: pointer;
+    }
+
+    #copy:hover {
+      background: #e8eaed;
+    }
+
+    #gcal a {
+      color: #1a73e8;
+      font-size: 13px;
+      text-decoration: none;
+    }
+
+    #gcal a:hover {
+      text-decoration: underline;
+    }
+
+    .calendar-preview {
+      margin-top: 1.8rem;
+      background: #ffffff;
+      border: 1px solid #dadce0;
+      border-radius: 8px;
+      overflow: hidden;
+      box-shadow: 0 1px 3px rgba(60,64,67,0.15), 0 1px 2px rgba(60,64,67,0.25);
+      text-align: left;
+    }
+
+    .calendar-preview-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 8px 12px;
+      background: #f8f9fa;
+      border-bottom: 1px solid #dadce0;
+      flex-wrap: wrap;
+      gap: 6px;
+    }
+
+    .calendar-title {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 13px;
+    }
+
+    .preview-subtitle {
+      color: #70757a;
+      font-size: 11px;
+    }
+
+    .calendar-status {
+      font-size: 11px;
+      color: #1a73e8;
+      font-style: italic;
+    }
+
+    .gcal-view {
+      display: flex;
+      flex-direction: column;
+      background: #ffffff;
+    }
+
+    .gcal-header-row {
+      display: flex;
+      border-bottom: 1px solid #dadce0;
+      background: #ffffff;
+    }
+
+    .gcal-time-col-header {
+      width: 44px;
+      flex-shrink: 0;
+      border-right: 1px solid #dadce0;
+    }
+
+    .gcal-day-header {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 6px 0;
+      border-right: 1px solid #dadce0;
+    }
+
+    .gcal-day-header:last-child {
+      border-right: none;
+    }
+
+    .day-name {
+      font-size: 10px;
+      font-weight: 500;
+      color: #70757a;
+      letter-spacing: 0.5px;
+    }
+
+    .day-number {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 22px;
+      height: 22px;
+      font-size: 12px;
+      font-weight: 500;
+      color: #3c4043;
+      border-radius: 50%;
+      margin-top: 2px;
+    }
+
+    .day-number.active-day {
+      background: #1a73e8;
+      color: #ffffff;
+    }
+
+    .gcal-body {
+      display: flex;
+      height: 320px;
+      position: relative;
+    }
+
+    .gcal-time-gutter {
+      width: 44px;
+      flex-shrink: 0;
+      border-right: 1px solid #dadce0;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      padding: 4px 4px 4px 0;
+      box-sizing: border-box;
+      user-select: none;
+    }
+
+    .time-slot-label {
+      font-size: 10px;
+      color: #70757a;
+      text-align: right;
+      height: 0;
+      line-height: 0;
+    }
+
+    .gcal-days-grid {
+      display: flex;
+      flex: 1;
+      position: relative;
+    }
+
+    .gcal-day-col {
+      flex: 1;
+      position: relative;
+      border-right: 1px solid #dadce0;
+      overflow: hidden;
+    }
+
+    .gcal-day-col:last-child {
+      border-right: none;
+    }
+
+    .grid-line {
+      position: absolute;
+      left: 0;
+      right: 0;
+      border-top: 1px solid #f1f3f4;
+      pointer-events: none;
+    }
+
+    .events-layer {
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+    }
+
+    .gcal-event {
+      position: absolute;
+      border-radius: 4px;
+      padding: 2px 4px;
+      box-sizing: border-box;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      line-height: 1.2;
+      transition: transform 0.1s ease;
+      cursor: default;
+    }
+
+    .gcal-event:hover {
+      transform: scale(1.02);
+      z-index: 10;
+    }
+
+    .gcal-event-lunch {
+      background: #e8f0fe;
+      border-left: 3px solid #1a73e8;
+      color: #174ea6;
+    }
+
+    .gcal-event-meeting {
+      background: #e6f4ea;
+      border-left: 3px solid #137333;
+      color: #0d652d;
+    }
+
+    .gcal-event-dinner {
+      background: #f3e8fd;
+      border-left: 3px solid #8e24aa;
+      color: #7627bb;
+    }
+
+    .gcal-event-sunblock {
+      background: #fef7e0;
+      border-left: 3px solid #f9ab00;
+      color: #b06000;
+      box-shadow: 0 1px 2px rgba(0,0,0,0.08);
+      font-weight: 500;
+    }
+
+    .event-time {
+      font-size: 9px;
+      opacity: 0.85;
+    }
+
+    .event-title {
+      font-size: 11px;
+      font-weight: 600;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .event-sunblock-text {
+      font-size: 10px;
+      font-weight: 600;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
     }
 
     .libleft {
