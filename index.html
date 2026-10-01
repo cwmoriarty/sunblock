@@ -2,38 +2,137 @@
 <html>
 
 <head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Sunblock 0.4b ☀️</title>
+  <meta name="description" content="Subscribe to a weather forecast calendar for your location.">
+  <meta property="og:title" content="Sunblock ☀️">
+  <meta property="og:description" content="Subscribe to a weather forecast calendar for your location.">
+  <meta property="og:type" content="website">
+  <meta property="og:url" content="https://sunblock.app">
+  <meta name="twitter:card" content="summary">
   <script async src="https://www.googletagmanager.com/gtag/js?id=G-914SDJ7S2Z"></script>
   <script>window.dataLayer = window.dataLayer || []; function gtag() { dataLayer.push(arguments); } gtag('js', new Date()); gtag('config', 'G-914SDJ7S2Z');</script>
+  <style type="text/css">
+    body {
+      font-family: Helvetica, Geneva, sans-serif;
+    }
+
+    a {
+      color: black;
+    }
+
+    .centered {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      width: 50%;
+      height: 50%;
+      font-size: calc(1vw + 1vh);
+    }
+
+    .centered h1 {
+      font-size: calc(2vw + 2vh);
+    }
+
+    #city {
+      font-family: inherit;
+      font-size: inherit;
+      font-weight: inherit;
+      color: inherit;
+      outline: none;
+      cursor: text;
+      border-bottom: 1px dashed rgba(0, 0, 0, 0.4);
+      padding: 0 2px;
+    }
+
+    #city:focus {
+      background-color: rgba(0, 0, 0, 0.05);
+      border-bottom-style: solid;
+    }
+
+    .subscribe-buttons {
+      margin-top: 1em;
+      display: flex;
+      gap: 0.5em;
+      flex-wrap: wrap;
+    }
+
+    .subscribe-buttons a {
+      display: inline-block;
+      padding: 0.5em 1em;
+      border-radius: 6px;
+      text-decoration: none;
+      font-size: inherit;
+      cursor: pointer;
+    }
+
+    .btn-apple {
+      background: #333;
+      color: #fff !important;
+    }
+
+    .btn-google {
+      background: #4285f4;
+      color: #fff !important;
+    }
+
+    .btn-apple:hover {
+      background: #555;
+    }
+
+    .btn-google:hover {
+      background: #3367d6;
+    }
+
+    .locate-btn {
+      background: none;
+      border: none;
+      cursor: pointer;
+      font-size: inherit;
+      padding: 0;
+      margin-left: 0.25em;
+      vertical-align: middle;
+    }
+
+    .locate-btn:hover {
+      opacity: 0.7;
+    }
+
+    @media (max-width: 768px) {
+      .centered {
+        width: 50%;
+        height: 50%;
+        font-size: calc(2vw + 2vh);
+      }
+    }
+
+    .libleft {
+      font-size: large;
+      position: fixed;
+      left: 10px;
+      bottom: 10px;
+    }
+  </style>
 </head>
 
 <body>
 
   <div class="centered">
     <h1>Sunblock 0.4b ☀️</h1>
-    <br>📅 <a href="" id="webcalURL"><span id="city" contenteditable="plaintext-only" spellcheck="false" title="Click to edit city name"></span></a> Weather Calendar.<br>
-    <br>
-
-    <input type="text" id="webCal" value=""></input>
-    <input type="button" id="copy" value="Copy" onclick="copyCal()"></input>
-    <br>
-    <span id="gcal"></span>
+    <br><span id="city" contenteditable="plaintext-only" spellcheck="false" title="Click to edit city name"></span>
+    <button class="locate-btn" onclick="usePreciseLocation()" title="Use precise location">📍</button>
+    Weather Calendar.<br>
+    <div class="subscribe-buttons">
+      <a id="appleCalBtn" class="btn-apple" href="" title="Subscribe via Apple/Web Calendar">Apple/Web Calendar</a>
+      <a id="googleCalBtn" class="btn-google" href="" target="_blank" title="Subscribe via Google Calendar">Google Calendar</a>
+    </div>
   </div>
 
   <div class="libleft">
     👨‍💻 <a href="http://cwmoriarty.com">cwmoriarty.com</a><br><br>
   </div>
-
-  <script type="text/javascript">
-    function copyCal() {
-      var webCal = document.getElementById("webCal");
-      webCal.select();
-      webCal.setSelectionRange(0, 99999);
-      navigator.clipboard.writeText(webCal.value);
-      document.getElementById("copy").value = "Copied.";
-      document.getElementById("gcal").innerHTML = "<a href=https://calendar.google.com/calendar/u/0/r/settings/addbyurl>Paste in Google Calendar</a>";
-    }
-  </script>
 
   <script type="text/javascript">
     const usStates = {
@@ -60,8 +159,9 @@
       if (currentCountry !== "US" && currentCountry !== "us") {
         url += '&units=C';
       }
-      document.getElementById("webCal").value = 'https://' + url;
-      document.getElementById("webcalURL").href = 'webcal://' + url;
+      const webcalUrl = 'webcal://' + url;
+      document.getElementById("appleCalBtn").href = webcalUrl;
+      document.getElementById("googleCalBtn").href = 'https://calendar.google.com/calendar/r?cid=' + encodeURIComponent(webcalUrl);
     }
 
     function setCityAndLinks(name, lat, lon, country) {
@@ -72,9 +172,9 @@
       updateCalendarLinks(name);
     }
 
-    function fallbackToBrowserGeolocation() {
+    function usePreciseLocation() {
       if (!("geolocation" in navigator)) {
-        setCityAndLinks("Your Location", 0, 0, "US");
+        alert("Geolocation is not supported by your browser.");
         return;
       }
 
@@ -101,15 +201,30 @@
         },
         (geoErr) => {
           console.error("Browser geolocation error or permission denied:", geoErr);
-          setCityAndLinks("Your Location", 0, 0, "US");
+          alert("Could not get your location. Please check your browser permissions.");
         },
-        { enableHighAccuracy: false, timeout: 10000 }
+        { enableHighAccuracy: true, timeout: 10000 }
       );
     }
 
-    // Editable city interactions
-    citySpan.addEventListener("click", (e) => {
-      e.stopPropagation();
+    // Geocode edited city name on blur to update lat/lon
+    citySpan.addEventListener("blur", async () => {
+      const query = citySpan.textContent.trim();
+      if (!query) return;
+      try {
+        const res = await fetch(`https://nominatim.openstreetmap.org/search?format=jsonv2&addressdetails=1&q=${encodeURIComponent(query)}&limit=1`);
+        if (!res.ok) throw new Error("Nominatim search failed");
+        const results = await res.json();
+        if (results.length > 0) {
+          currentLat = parseFloat(results[0].lat);
+          currentLon = parseFloat(results[0].lon);
+          const addr = results[0].address || {};
+          currentCountry = (addr.country_code || "us").toUpperCase();
+          updateCalendarLinks(query);
+        }
+      } catch (err) {
+        console.error("Geocoding failed:", err);
+      }
     });
 
     citySpan.addEventListener("keydown", (e) => {
@@ -202,60 +317,7 @@
     });
   </script>
 
-  <style type="text/css">
-    body {
-      font-family: Helvetica, Geneva, sans-serif;
-    }
-
-    a {
-      color: black;
-    }
-
-    .centered {
-      position: absolute;
-      top: 50%;
-      left: 50%;
-      transform: translate(-50%, -50%);
-      width: 50%;
-      height: 50%;
-      font-size: calc(1vw + 1vh);
-    }
-
-    .centered h1 {
-      font-size: calc(2vw + 2vh);
-    }
-
-    #city {
-      font-family: inherit;
-      font-size: inherit;
-      font-weight: inherit;
-      color: inherit;
-      outline: none;
-      cursor: text;
-      border-bottom: 1px dashed rgba(0, 0, 0, 0.4);
-      padding: 0 2px;
-    }
-
-    #city:focus {
-      background-color: rgba(0, 0, 0, 0.05);
-      border-bottom-style: solid;
-    }
-
-    @media (max-width: 768px) {
-      .centered {
-        width: 50%;
-        height: 50%;
-        font-size: calc(2vw + 2vh);
-      }
-    }
-
-    .libleft {
-      font-size: large;
-      position: fixed;
-      left: 10px;
-      bottom: 10px;
-    }
-  </style>
+<script type="module" src="https://static.cloudflareinsights.com/beacon.min.js/v31edd6df95cf4e85bb4c19e7a9bdbcba1788362987495" integrity="sha512-iIg7k2xntmwu6/uSb5tpc/hySgZc4eoL31yB29W6tJFo2akwjPWcEqnCEdJvGexCL0KEQwVYv5BlowfhVz26hg==" data-cf-beacon='{"version":"2024.11.0","token":"7baf5c8a28374fe08e51dc7cd2846445","r":1,"spa":2}' crossorigin="anonymous"></script>
 </body>
 
 </html>
