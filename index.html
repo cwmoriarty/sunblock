@@ -123,23 +123,83 @@
       updateCalendarLinks(citySpan.textContent.trim());
     });
 
-    // Determine initial city & coordinates via IP
-    fetch('https://ipapi.co/json')
-      .then(response => {
-        if (!response.ok) throw new Error("ipapi fetch failed");
-        return response.json();
-      })
-      .then(data => {
-        if (data.error || !data.city || typeof data.latitude !== 'number' || typeof data.longitude !== 'number') {
-          throw new Error(data.reason || "City not found in IP data");
+    // Determine initial city & coordinates by coalescing 3 IP geolocation providers
+    async function determineInitialLocation() {
+      const providers = [
+        async () => {
+          const res = await fetch("https://hackmyip.com/api/ip");
+          if (!res.ok) throw new Error("HackMyIP failed: " + res.status);
+          const data = await res.json();
+          const loc = data?.data?.location;
+          if (!loc || typeof loc.latitude === "undefined") throw new Error("HackMyIP missing location data");
+          return {
+            lat: parseFloat(loc.latitude),
+            lon: parseFloat(loc.longitude),
+            city: loc.city || "",
+            region: loc.region || "",
+            country: (loc.country || "US").toUpperCase()
+          };
+        },
+        async () => {
+          const res = await fetch("https://get.geojs.io/v1/ip/geo.json");
+          if (!res.ok) throw new Error("GeoJS failed: " + res.status);
+          const data = await res.json();
+          if (!data || typeof data.latitude === "undefined") throw new Error("GeoJS missing location data");
+          return {
+            lat: parseFloat(data.latitude),
+            lon: parseFloat(data.longitude),
+            city: data.city || "",
+            region: data.region || "",
+            country: (data.country_code || (data.country === "United States" ? "US" : "US")).toUpperCase()
+          };
+        },
+        async () => {
+          const res = await fetch("https://ipwho.is/");
+          if (!res.ok) throw new Error("ipwho.is failed: " + res.status);
+          const data = await res.json();
+          if (!data?.success || typeof data.latitude === "undefined") throw new Error("ipwho.is failed or missing location data");
+          return {
+            lat: parseFloat(data.latitude),
+            lon: parseFloat(data.longitude),
+            city: data.city || "",
+            region: data.region || "",
+            region_code: data.region_code || "",
+            country: (data.country_code || (data.country === "United States" ? "US" : "US")).toUpperCase()
+          };
         }
-        const city = data.city + (data.region_code ? ", " + data.region_code : "");
-        setCityAndLinks(city, data.latitude, data.longitude, data.country_code || data.country || "US");
-      })
-      .catch(error => {
-        console.warn("ipapi.co lookup failed, falling back to browser geolocation:", error);
-        fallbackToBrowserGeolocation();
-      });
+      ];
+
+      const settled = await Promise.allSettled(providers.map(p => p()));
+      const valid = settled
+        .filter(s => s.status === "fulfilled" && !isNaN(s.value.lat) && !isNaN(s.value.lon))
+        .map(s => s.value);
+
+      if (valid.length === 0) {
+        throw new Error("All IP geolocation providers failed");
+      }
+
+      // Coalesce coordinates by averaging valid providers
+      const avgLat = valid.reduce((sum, item) => sum + item.lat, 0) / valid.length;
+      const avgLon = valid.reduce((sum, item) => sum + item.lon, 0) / valid.length;
+
+      // Pick best city/region/country metadata (prefer entries with both city & region)
+      const best = valid.find(item => item.city && item.region) || valid.find(item => item.city) || valid[0];
+      const city = best.city || "Your Location";
+      const country = best.country || "US";
+
+      let stateAbbr = "";
+      if (country === "US") {
+        stateAbbr = best.region_code || usStates[best.region] || best.region || "";
+      }
+
+      const fullCity = stateAbbr ? `${city}, ${stateAbbr}` : city;
+      setCityAndLinks(fullCity, avgLat, avgLon, country);
+    }
+
+    determineInitialLocation().catch(error => {
+      console.warn("IP geolocation providers failed, falling back to browser geolocation:", error);
+      fallbackToBrowserGeolocation();
+    });
   </script>
 
   <style type="text/css">
