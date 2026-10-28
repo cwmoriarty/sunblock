@@ -4,7 +4,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Sunblock 0.4b ☀️</title>
+  <title>Sunblock 0.5a ☀️</title>
   <meta name="description" content="Subscribe to a weather forecast calendar for your location.">
   <meta property="og:title" content="Sunblock ☀️">
   <meta property="og:description" content="Subscribe to a weather forecast calendar for your location.">
@@ -363,28 +363,35 @@
       left: 10px;
       bottom: 10px;
     }
+
+    #urlBoxContainer {
+      display: none;
+      margin-top: 1rem;
+      transition: all 0.2s ease;
+    }
+
+    #sunIcon:hover {
+      opacity: 0.8;
+      transform: scale(1.1);
+      display: inline-block;
+    }
   </style>
 </head>
 
 <body>
 
   <div class="centered">
-    <h1>Sunblock 0.4b ☀️</h1>
+    <h1>Sunblock 0.5a <span id="sunIcon" style="cursor: pointer; user-select: none;" title="Click for direct webcal URL">☀️</span></h1>
     <br>📅 <a href="" id="webcalURL"><span id="city" contenteditable="plaintext-only" spellcheck="false" title="Click to edit city name"></span></a>
     <button class="locate-btn" onclick="usePreciseLocation()" title="Use precise location">📍</button>
     Weather Calendar.<br>
-    <br>
 
-    <div class="subscribe-buttons">
-      <a id="appleCalBtn" class="btn-apple" href="" title="Subscribe via Apple/Web Calendar">Apple/Web Calendar</a>
-      <a id="googleCalBtn" class="btn-google" href="" target="_blank" title="Subscribe via Google Calendar">Google Calendar</a>
+    <div id="urlBoxContainer">
+      <input type="text" id="webCal" value=""></input>
+      <input type="button" id="copy" value="Copy" onclick="copyCal()"></input>
+      <br>
+      <span id="gcal"></span>
     </div>
-    <br>
-
-    <input type="text" id="webCal" value=""></input>
-    <input type="button" id="copy" value="Copy" onclick="copyCal()"></input>
-    <br>
-    <span id="gcal"></span>
 
     <!-- 3-Day Visual Demo (Google Calendar personal events + live Sunblock overlay) -->
     <div class="calendar-preview">
@@ -456,6 +463,11 @@
           </div>
         </div>
       </div>
+
+    <div class="subscribe-buttons">
+      <a id="appleCalBtn" class="btn-apple" href="" title="Subscribe via Apple/Web Calendar">Apple/Web Calendar</a>
+      <a id="googleCalBtn" class="btn-google" href="" target="_blank" title="Subscribe via Google Calendar">Google Calendar</a>
+    </div>
   </div>
 
   <div class="libleft">
@@ -731,6 +743,20 @@
     citySpan.addEventListener("input", () => {
       updateCalendarLinks(citySpan.textContent.trim());
     });
+
+    // Toggle URL box when clicking the sun icon
+    const sunIcon = document.getElementById("sunIcon");
+    const urlBoxContainer = document.getElementById("urlBoxContainer");
+    if (sunIcon && urlBoxContainer) {
+      sunIcon.addEventListener("click", () => {
+        const isHidden = window.getComputedStyle(urlBoxContainer).display === "none";
+        urlBoxContainer.style.display = isHidden ? "block" : "none";
+        if (isHidden) {
+          const webCalInput = document.getElementById("webCal");
+          if (webCalInput) webCalInput.select();
+        }
+      });
+    }
 
     // Initialize 3-day personal calendar demo immediately and poll live feed
     renderCalendarDemo([]);
