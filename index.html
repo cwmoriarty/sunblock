@@ -209,7 +209,8 @@
   </div>
 
   <div class="libleft">
-    👨‍💻 <a href="http://cwmoriarty.com">cwmoriarty.com</a><br><br>
+    👨‍💻 <a href="http://cwmoriarty.com">cwmoriarty.com</a>
+    <div style="font-size: 10px; opacity: 0.6; margin-top: 4px;">Built 2026-10-28 18:37 UTC</div>
   </div>
 
   <script type="text/javascript">
@@ -483,16 +484,60 @@
     renderCalendarDemo([]);
     pollLiveCalendarData();
 
-    // Determine initial city & coordinates via IP
-    fetch('https://ipapi.co/json')
-      .then(response => {
-        if (!response.ok) throw new Error("ipapi fetch failed");
-        return response.json();
-      })
-      .then(data => {
-        if (data.error || !data.city || typeof data.latitude !== 'number' || typeof data.longitude !== 'number') {
-          throw new Error(data.reason || "City not found in IP data");
+
+    // State bounding boxes for geographic sanity checking (lat min/max, lon min/max)
+    const stateBounds = {
+      "ND": { minLat: 45.9, maxLat: 49.0, minLon: -104.1, maxLon: -96.5 },
+      "MA": { minLat: 41.2, maxLat: 42.9, minLon: -73.5, maxLon: -69.9 },
+      "NH": { minLat: 42.7, maxLat: 45.3, minLon: -72.6, maxLon: -70.7 },
+      "VT": { minLat: 42.7, maxLat: 45.0, minLon: -73.4, maxLon: -71.5 },
+      "ME": { minLat: 43.0, maxLat: 47.5, minLon: -71.1, maxLon: -66.9 },
+      "RI": { minLat: 41.1, maxLat: 42.0, minLon: -71.9, maxLon: -71.1 },
+      "CT": { minLat: 40.9, maxLat: 42.1, minLon: -73.7, maxLon: -71.8 }
+    };
+
+    function isStateCoordinateMismatch(stateAbbr, lat, lon) {
+      if (!stateAbbr || !stateBounds[stateAbbr]) return false;
+      const b = stateBounds[stateAbbr];
+      return (lat < b.minLat || lat > b.maxLat || lon < b.minLon || lon > b.maxLon);
+    }
+
+    // Fallback to browser geolocation when IP providers fail or are rejected
+    function fallbackToBrowserGeolocation() {
+      if (!("geolocation" in navigator)) {
+        setCityAndLinks("Your Location", 0, 0, "US");
+        return;
+      }
+
+      navigator.geolocation.getCurrentPosition(
+        async (position) => {
+          const lat = position.coords.latitude;
+          const lon = position.coords.longitude;
+          try {
+            const res = await fetch(`https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${lat}&lon=${lon}`);
+            if (!res.ok) throw new Error("Nominatim reverse geocoding failed");
+            const geoData = await res.json();
+            const addr = geoData.address || {};
+            const detectedCity = addr.city || addr.town || addr.village || addr.municipality || addr.hamlet || addr.suburb || addr.county || "Your Location";
+            const stateAbbr = (addr["ISO3166-2-lvl4"] ? addr["ISO3166-2-lvl4"].split("-")[1] : "") || usStates[addr.state] || addr.state_code || addr.state || "";
+            const country = addr.country_code ? addr.country_code.toUpperCase() : "US";
+            const fullCity = stateAbbr ? `${detectedCity}, ${stateAbbr}` : detectedCity;
+            setCityAndLinks(fullCity, lat, lon, country);
+          } catch (err) {
+            console.error("Reverse geocoding error:", err);
+            setCityAndLinks("Your Location", lat, lon, "US");
+          }
+        },
+        (err) => {
+          console.warn("Browser geolocation denied/failed:", err);
+          setCityAndLinks("Your Location", 0, 0, "US");
+        },
+        { timeout: 8000 }
+      );
+    }
+
     // Determine initial city & coordinates by coalescing 3 IP geolocation providers
+    // with independent verification & coordinate sanity checking (Fixes #6 & #7)
     async function determineInitialLocation() {
       const providers = [
         async () => {
@@ -502,6 +547,7 @@
           const loc = data?.data?.location;
           if (!loc || typeof loc.latitude === "undefined") throw new Error("HackMyIP missing location data");
           return {
+            name: "HackMyIP",
             lat: parseFloat(loc.latitude),
             lon: parseFloat(loc.longitude),
             city: loc.city || "",
@@ -515,6 +561,7 @@
           const data = await res.json();
           if (!data || typeof data.latitude === "undefined") throw new Error("GeoJS missing location data");
           return {
+            name: "GeoJS",
             lat: parseFloat(data.latitude),
             lon: parseFloat(data.longitude),
             city: data.city || "",
@@ -528,6 +575,7 @@
           const data = await res.json();
           if (!data?.success || typeof data.latitude === "undefined") throw new Error("ipwho.is failed or missing location data");
           return {
+            name: "ipwho.is",
             lat: parseFloat(data.latitude),
             lon: parseFloat(data.longitude),
             city: data.city || "",
@@ -538,14 +586,6 @@
         }
       ];
 
-  <style type="text/css">
-    body {
-      font-family: Helvetica, Geneva, sans-serif;
-      margin: 0;
-      padding: 0;
-      background: #fafafa;
-      color: #202124;
-    }
       const settled = await Promise.allSettled(providers.map(p => p()));
       const valid = settled
         .filter(s => s.status === "fulfilled" && !isNaN(s.value.lat) && !isNaN(s.value.lon))
@@ -555,295 +595,54 @@
         throw new Error("All IP geolocation providers failed");
       }
 
-    .centered {
-      width: 92%;
-      max-width: 680px;
-      margin: 2.5rem auto 5rem auto;
-      text-align: center;
-      font-size: 16px;
-    }
+      // Average coordinates across valid providers
+      let avgLat = valid.reduce((sum, item) => sum + item.lat, 0) / valid.length;
+      let avgLon = valid.reduce((sum, item) => sum + item.lon, 0) / valid.length;
 
-    .centered h1 {
-      font-size: calc(1.8vw + 1.8vh + 14px);
-      margin: 0.5rem 0;
-    }
-      // Coalesce coordinates by averaging valid providers
-      const avgLat = valid.reduce((sum, item) => sum + item.lat, 0) / valid.length;
-      const avgLon = valid.reduce((sum, item) => sum + item.lon, 0) / valid.length;
-
-      // Pick best city/region/country metadata (prefer entries with both city & region)
+      // Select candidate metadata
       const best = valid.find(item => item.city && item.region) || valid.find(item => item.city) || valid[0];
-      const city = best.city || "Your Location";
-      const country = best.country || "US";
-
+      let city = best.city || "Your Location";
+      let country = best.country || "US";
       let stateAbbr = "";
       if (country === "US") {
         stateAbbr = best.region_code || usStates[best.region] || best.region || "";
+      }
+
+      // Independent Sanity Check (Issue #6 / #7):
+      // 1. Check if city or region matches generic "New England" or matches ND when coordinates are in the East
+      const isGenericNewEngland = city.toLowerCase().includes("new england") || (best.region && best.region.toLowerCase().includes("new england"));
+      const isNorthDakotaMismatch = (stateAbbr === "ND" || city.toLowerCase() === "new england") && avgLon > -85;
+      const isCoordMismatch = isStateCoordinateMismatch(stateAbbr, avgLat, avgLon);
+
+      if (isGenericNewEngland || isNorthDakotaMismatch || isCoordMismatch) {
+        console.warn(`Location sanity check triggered (city: "${city}", state: "${stateAbbr}", coords: ${avgLat.toFixed(2)}, ${avgLon.toFixed(2)}). Verifying via reverse geocode...`);
+        try {
+          const verifyRes = await fetch(`https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${avgLat}&lon=${avgLon}`);
+          if (verifyRes.ok) {
+            const verifyData = await verifyRes.json();
+            const addr = verifyData.address || {};
+            const verifiedCity = addr.city || addr.town || addr.village || addr.municipality || addr.hamlet || addr.suburb || addr.county;
+            const verifiedState = (addr["ISO3166-2-lvl4"] ? addr["ISO3166-2-lvl4"].split("-")[1] : "") || usStates[addr.state] || addr.state_code || addr.state || "";
+            if (verifiedCity && !verifiedCity.toLowerCase().includes("new england")) {
+              city = verifiedCity;
+              stateAbbr = verifiedState;
+              country = addr.country_code ? addr.country_code.toUpperCase() : country;
+            }
+          }
+        } catch (verifyErr) {
+          console.error("Independent verification lookup failed:", verifyErr);
+        }
       }
 
       const fullCity = stateAbbr ? `${city}, ${stateAbbr}` : city;
       setCityAndLinks(fullCity, avgLat, avgLon, country);
     }
 
-    #webCal {
-      width: 70%;
-      max-width: 380px;
-      padding: 6px 10px;
-      font-size: 14px;
-      border: 1px solid #dadce0;
-      border-radius: 4px;
-      box-sizing: border-box;
-    }
-
-    #copy {
-      padding: 6px 14px;
-      font-size: 14px;
-      border: 1px solid #dadce0;
-      border-radius: 4px;
-      background: #f1f3f4;
-      cursor: pointer;
-    }
-
-    #copy:hover {
-      background: #e8eaed;
-    }
-
-    #gcal a {
-      color: #1a73e8;
-      font-size: 13px;
-      text-decoration: none;
-    }
-
-    #gcal a:hover {
-      text-decoration: underline;
-    }
-
-    .calendar-preview {
-      margin-top: 1.8rem;
-      background: #ffffff;
-      border: 1px solid #dadce0;
-      border-radius: 8px;
-      overflow: hidden;
-      box-shadow: 0 1px 3px rgba(60,64,67,0.15), 0 1px 2px rgba(60,64,67,0.25);
-      text-align: left;
-    }
-
-    .calendar-preview-header {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      padding: 8px 12px;
-      background: #f8f9fa;
-      border-bottom: 1px solid #dadce0;
-      flex-wrap: wrap;
-      gap: 6px;
-    }
-
-    .calendar-title {
-      display: flex;
-      align-items: center;
-      gap: 6px;
-      font-size: 13px;
-    }
-
-    .preview-subtitle {
-      color: #70757a;
-      font-size: 11px;
-    }
-
-    .calendar-status {
-      font-size: 11px;
-      color: #1a73e8;
-      font-style: italic;
-    }
-
-    .gcal-view {
-      display: flex;
-      flex-direction: column;
-      background: #ffffff;
-    }
-
-    .gcal-header-row {
-      display: flex;
-      border-bottom: 1px solid #dadce0;
-      background: #ffffff;
-    }
-
-    .gcal-time-col-header {
-      width: 44px;
-      flex-shrink: 0;
-      border-right: 1px solid #dadce0;
-    }
-
-    .gcal-day-header {
-      flex: 1;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      padding: 6px 0;
-      border-right: 1px solid #dadce0;
-    }
-
-    .gcal-day-header:last-child {
-      border-right: none;
-    }
-
-    .day-name {
-      font-size: 10px;
-      font-weight: 500;
-      color: #70757a;
-      letter-spacing: 0.5px;
-    }
-
-    .day-number {
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      width: 22px;
-      height: 22px;
-      font-size: 12px;
-      font-weight: 500;
-      color: #3c4043;
-      border-radius: 50%;
-      margin-top: 2px;
-    }
-
-    .day-number.active-day {
-      background: #1a73e8;
-      color: #ffffff;
-    }
-
-    .gcal-body {
-      display: flex;
-      height: 320px;
-      position: relative;
-    }
-
-    .gcal-time-gutter {
-      width: 44px;
-      flex-shrink: 0;
-      border-right: 1px solid #dadce0;
-      display: flex;
-      flex-direction: column;
-      justify-content: space-between;
-      padding: 4px 4px 4px 0;
-      box-sizing: border-box;
-      user-select: none;
-    }
-
-    .time-slot-label {
-      font-size: 10px;
-      color: #70757a;
-      text-align: right;
-      height: 0;
-      line-height: 0;
-    }
-
-    .gcal-days-grid {
-      display: flex;
-      flex: 1;
-      position: relative;
-    }
-
-    .gcal-day-col {
-      flex: 1;
-      position: relative;
-      border-right: 1px solid #dadce0;
-      overflow: hidden;
-    }
-
-    .gcal-day-col:last-child {
-      border-right: none;
-    }
-
-    .grid-line {
-      position: absolute;
-      left: 0;
-      right: 0;
-      border-top: 1px solid #f1f3f4;
-      pointer-events: none;
-    }
-
-    .events-layer {
-      position: absolute;
-      top: 0;
-      left: 0;
-      right: 0;
-      bottom: 0;
-    }
-
-    .gcal-event {
-      position: absolute;
-      border-radius: 4px;
-      padding: 2px 4px;
-      box-sizing: border-box;
-      overflow: hidden;
-      display: flex;
-      flex-direction: column;
-      justify-content: center;
-      line-height: 1.2;
-      transition: transform 0.1s ease;
-      cursor: default;
-    }
-
-    .gcal-event:hover {
-      transform: scale(1.02);
-      z-index: 10;
-    }
-
-    .gcal-event-lunch {
-      background: #e8f0fe;
-      border-left: 3px solid #1a73e8;
-      color: #174ea6;
-    }
-
-    .gcal-event-meeting {
-      background: #e6f4ea;
-      border-left: 3px solid #137333;
-      color: #0d652d;
-    }
-
-    .gcal-event-dinner {
-      background: #f3e8fd;
-      border-left: 3px solid #8e24aa;
-      color: #7627bb;
-    }
-
-    .gcal-event-sunblock {
-      background: #fef7e0;
-      border-left: 3px solid #f9ab00;
-      color: #b06000;
-      box-shadow: 0 1px 2px rgba(0,0,0,0.08);
-      font-weight: 500;
-    }
-
-    .event-time {
-      font-size: 9px;
-      opacity: 0.85;
-    }
-
-    .event-title {
-      font-size: 11px;
-      font-weight: 600;
-      white-space: nowrap;
-      overflow: hidden;
-      text-overflow: ellipsis;
-    }
-
-    .event-sunblock-text {
-      font-size: 10px;
-      font-weight: 600;
-      white-space: nowrap;
-      overflow: hidden;
-      text-overflow: ellipsis;
-    }
     determineInitialLocation().catch(error => {
       console.warn("IP geolocation providers failed, falling back to browser geolocation:", error);
       fallbackToBrowserGeolocation();
     });
   </script>
-
-<script type="module" src="https://static.cloudflareinsights.com/beacon.min.js/v31edd6df95cf4e85bb4c19e7a9bdbcba1788362987495" integrity="sha512-iIg7k2xntmwu6/uSb5tpc/hySgZc4eoL31yB29W6tJFo2akwjPWcEqnCEdJvGexCL0KEQwVYv5BlowfhVz26hg==" data-cf-beacon='{"version":"2024.11.0","token":"7baf5c8a28374fe08e51dc7cd2846445","r":1,"spa":2}' crossorigin="anonymous"></script>
 </body>
 
 </html>
