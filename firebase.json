@@ -1,0 +1,25 @@
+{
+  "hosting": {
+    "public": ".",
+    "ignore": [
+      "firebase.json",
+      "**/.*",
+      "**/node_modules/**",
+      "README.md"
+    ],
+    "rewrites": [
+      {
+        "source": "/cal/**",
+        "function": "cal"
+      },
+      {
+        "source": "/tide/**",
+        "function": "tide"
+      },
+      {
+        "source": "!/@(cal|tide)/**",
+        "destination": "/index.html"
+      }
+    ]
+  }
+}
